@@ -1,38 +1,43 @@
-<style>
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #0e1117;
-      color: #e2e8f0;
-    }
-    .font-mono-code {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .glass-panel {
-      background: rgba(17, 24, 39, 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid #1e293b;
-    }
-    .glass-panel-subtle {
-      background: rgba(15, 23, 42, 0.5);
-      border: 1px solid rgba(30, 41, 59, 0.8);
-    }
-    .turbo-gradient {
-      background: linear-gradient(90deg, 
-        #30123b 0%, 
-        #4145ab 15%, 
-        #467df2 30%, 
-        #1ae4b6 48%, 
-        #a2fc3c 65%, 
-        #faba39 80%, 
-        #e24116 92%, 
-        #7a0403 100%
-      );
-    }
-    .grid-bg-pattern {
-      background-size: 28px 28px;
-      background-image: 
-        linear-gradient(to right, rgba(30, 41, 59, 0.45) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(30, 41, 59, 0.45) 1px, transparent 1px);
-    }
-  </style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #0e1117;
+  color: #e2e8f0;
+}
+
+.font-mono-code {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.glass-panel {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #1e293b;
+}
+
+.glass-panel-subtle {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+}
+
+.turbo-gradient {
+  background: linear-gradient(90deg, 
+    #30123b 0%, 
+    #4145ab 15%, 
+    #467df2 30%, 
+    #1ae4b6 48%, 
+    #a2fc3c 65%, 
+    #faba39 80%, 
+    #e24116 92%, 
+    #7a0403 100%
+  );
+}
+
+.grid-bg-pattern {
+  background-size: 28px 28px;
+  background-image: 
+    linear-gradient(to right, rgba(30, 41, 59, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.45) 1px, transparent 1px);
+}
