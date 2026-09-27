@@ -1,0 +1,5 @@
+__pycache__/
+.streamlit/
+models/*.pkl
+data/raw/*.csv
+.venv/
