@@ -18,6 +18,18 @@ st.set_page_config(
     layout="wide",
     page_icon="🛰️",
 )
+# ── INJECT STITCH CSS & TAILWIND ──────────────────────────────────────────────
+def load_styles():
+    # Inject Tailwind CDN
+    st.markdown(
+        '<script src="https://cdn.tailwindcss.com"></script>',
+        unsafe_allow_html=True,
+    )
+    # Inject custom stylesheet from the models/ui folder
+    with open("models/ui/style.css", "r") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+load_styles()
 
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
@@ -107,15 +119,34 @@ def build_grid_dataframe(_df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
 
-    # ── HEADER ────────────────────────────────────────────────────────────────
-    st.title("🛰️ High-Resolution NO₂ Spatial Downscaling — Mumbai")
-    st.markdown(
-        "Satellite-derived tropospheric NO₂ downscaled to **1 km × 1 km** "
-        "using a LightGBM model trained on ERA5 meteorology, SRTM elevation, "
-        "and Sentinel-5P observations."
-    )
-    st.divider()
-
+    
+# ── HEADER ────────────────────────────────────────────────────────────────
+    st.markdown("""
+        <header class="w-full glass-panel border-b border-[#1e293b] px-6 py-4 rounded-xl mb-6 mt-4">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 flex items-center justify-center text-xl">
+                🛰️
+              </div>
+              <div>
+                <h1 class="text-lg md:text-xl font-bold tracking-tight text-white m-0 p-0">
+                  High-Resolution NO₂ Spatial Downscaling — Mumbai
+                </h1>
+                <p class="text-xs text-slate-400 font-medium m-0 p-0">
+                  Sentinel-5P TROPOMI • Machine Learning Super-Resolution • Daily Atmosphere Layer
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/40">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+              </span>
+              <span class="text-xs font-semibold text-emerald-300 uppercase">Live Validation Active</span>
+            </div>
+          </div>
+        </header>
+    """, unsafe_allow_html=True)
     # ── SIDEBAR ───────────────────────────────────────────────────────────────
     with st.sidebar:
         st.header("⚙️ Controls")
@@ -373,35 +404,109 @@ def main():
         tooltip=tooltip,
     )
 
-    # ── RENDER ────────────────────────────────────────────────────────────────
-    st.subheader("🗺️ NO₂ Prediction Grid — Mumbai Metropolitan Region")
-
+ # ── RENDER ────────────────────────────────────────────────────────────────
     col_map, col_stats = st.columns([3, 1])
 
     with col_map:
+        # Map Top Bar
+        st.markdown("""
+            <div class="flex items-center justify-between px-3 py-2 border border-[#1e293b] bg-slate-900/40 rounded-t-xl">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500/70 inline-block"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-yellow-500/70 inline-block"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-green-500/70 inline-block"></span>
+                <span class="text-xs font-mono-code text-slate-400 ml-2">st.pydeck_chart(deck)</span>
+              </div>
+              <span class="text-xs font-mono-code text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60">
+                Layer: Column Density (mol/m²)
+              </span>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Dynamic PyDeck Map
         st.pydeck_chart(deck, use_container_width=True)
 
-    with col_stats:
-        st.markdown("### 📈 Grid Summary")
-        st.metric("Max NO₂",  f"{df['predicted_no2'].max():.4e}")
-        st.metric("Min NO₂",  f"{df['predicted_no2'].min():.4e}")
-        st.metric("Mean NO₂", f"{df['predicted_no2'].mean():.4e}")
-        st.metric("Grid pts", f"{len(df):,}")
+        # Map Legend Bar below PyDeck
+        st.markdown("""
+            <div class="mt-3 p-4 rounded-xl glass-panel-subtle border border-[#1e293b] flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="w-full md:w-1/2 flex flex-col gap-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-semibold text-slate-300">NO₂ Column Density (Turbo Color Scale)</span>
+                  <span class="font-mono-code text-[11px] text-slate-400">×10⁻⁵ mol/m²</span>
+                </div>
+                <div class="h-3 w-full rounded-full turbo-gradient border border-slate-700/60"></div>
+                <div class="flex items-center justify-between text-[11px] font-mono-code text-slate-400 pt-0.5">
+                  <span>0.0 (Clean Air)</span>
+                  <span class="text-rose-400 font-semibold">50.0+ (Severe)</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-6 justify-end border-l border-slate-800 pl-6">
+                <div class="flex items-center gap-2">
+                  <span class="w-3.5 h-3.5 rounded-full bg-red-500 border-2 border-red-300 inline-block"></span>
+                  <span class="text-xs text-slate-200">Ground-truth Stations</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-300 inline-block"></span>
+                  <span class="text-xs text-slate-200">Live OpenAQ Sensors</span>
+                </div>
+              </div>
+            </div>
+        """, unsafe_allow_html=True)
 
-        st.divider()
-        st.markdown("### 🏆 Model Details")
-        st.markdown(
-            """
-            | Parameter   | Value            |
-            |-------------|------------------|
-            | Algorithm   | LightGBM         |
-            | Features    | 12               |
-            | R²          | 0.9522           |
-            | RMSE        | 9.069e-06        |
-            | Resolution  | 1 km × 1 km     |
-            | Target      | Tropospheric NO₂ |
-            """
-        )
+    with col_stats:
+        max_no2 = df['predicted_no2'].max()
+        min_no2 = df['predicted_no2'].min()
+
+        st.markdown(f"""
+            <div class="flex flex-col gap-3.5">
+              <div class="glass-panel rounded-xl p-4 border border-[#1e293b]">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                  <span class="font-medium text-slate-300">R² Score</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono-code bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">HIGH FIT</span>
+                </div>
+                <div class="text-2xl font-bold text-white font-mono-code">0.9522</div>
+                <div class="mt-2 text-[11px] text-slate-400 pt-2 border-t border-slate-800/60 flex justify-between">
+                  <span>Variance Explained</span>
+                  <span class="font-semibold text-emerald-400 font-mono-code">95.2%</span>
+                </div>
+              </div>
+
+              <div class="glass-panel rounded-xl p-4 border border-[#1e293b]">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                  <span class="font-medium text-slate-300">RMSE</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono-code bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">mol/m²</span>
+                </div>
+                <div class="text-2xl font-bold text-white font-mono-code">9.069e-06</div>
+                <div class="mt-2 text-[11px] text-slate-400 pt-2 border-t border-slate-800/60 flex justify-between">
+                  <span>Residual Deviation</span>
+                  <span class="font-mono-code text-slate-300">±0.009 µmol</span>
+                </div>
+              </div>
+
+              <div class="glass-panel rounded-xl p-4 border border-[#1e293b]">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                  <span class="font-medium text-slate-300">Resolution</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono-code bg-blue-500/10 text-blue-300 border border-blue-500/20">10x FACTOR</span>
+                </div>
+                <div class="text-2xl font-bold text-white font-mono-code">1 km × 1 km</div>
+                <div class="mt-2 text-[11px] text-slate-400 pt-2 border-t border-slate-800/60 flex justify-between">
+                  <span>Original Baseline</span>
+                  <span class="font-mono-code text-slate-400">7.0 km × 3.5 km</span>
+                </div>
+              </div>
+
+              <div class="glass-panel rounded-xl p-4 border border-[#1e293b]">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                  <span class="font-medium text-slate-300">Max NO₂ Concentration</span>
+                </div>
+                <div class="text-2xl font-bold text-white font-mono-code">{max_no2:.4e}</div>
+                <div class="mt-2 text-[11px] text-slate-400 pt-2 border-t border-slate-800/60 flex justify-between">
+                  <span>Min NO₂</span>
+                  <span class="font-mono-code text-slate-300">{min_no2:.4e}</span>
+                </div>
+              </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     # ── FOOTER ────────────────────────────────────────────────────────────────
     st.divider()
