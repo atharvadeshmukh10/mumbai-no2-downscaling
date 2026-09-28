@@ -226,6 +226,9 @@ def main():
     # CRITICAL FIX: Collapse multi-day temporal data into a single 2D spatial map
     map_df = df.groupby(["lat", "lon"])["predicted_no2"].mean().reset_index()
 
+    # ── UNIT CONVERSION: mol/m² → µg/m³ (scale ×1e6, round to 2dp) ──────────
+    map_df["predicted_no2"] = (map_df["predicted_no2"] * 1e6).round(2)
+
     # ── COLOUR SCALE ──────────────────────────────────────────────────────────
     vmin = map_df["predicted_no2"].quantile(0.05)
     vmax = map_df["predicted_no2"].quantile(0.95)
@@ -416,7 +419,10 @@ def main():
     )
 
     tooltip = {
-        "html": "<b>Predicted NO₂:</b> {predicted_no2}<br/><b>{label}</b>",
+        "html": (
+            "<b>NO₂ Concentration:</b> {predicted_no2} µg/m³<br/>"
+            "<b>{label}</b>"
+        ),
         "style": {
             "backgroundColor": "#1e1e2e",
             "color": "white",
@@ -436,15 +442,16 @@ def main():
 
     # ── FILL KPI ROW (now that all data is computed) ───────────────────────────
     # Uses kpi_placeholder defined at the top so it renders above the map in UI.
-    peak_no2   = map_df["predicted_no2"].max()
+    peak_no2   = map_df["predicted_no2"].max()   # already scaled to µg/m³
     sensor_val = str(len(live_station_rows)) if live_station_rows else "Offline"
 
     with kpi_placeholder.container():
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("LightGBM R²",       "0.9522")
         col2.metric("Spatial Resolution", "1 km²")
-        col3.metric("Peak Predicted NO₂", f"{peak_no2:.1e}")
+        col3.metric("Peak Predicted NO₂", f"{peak_no2:.1f} µg/m³")
         col4.metric("Active Sensors",     sensor_val)
+
 
     st.divider()
 
@@ -454,9 +461,10 @@ def main():
     # ── COLLAPSIBLE DIAGNOSTICS ───────────────────────────────────────────────
     with st.expander("🔬 View Model Architecture & Diagnostics", expanded=False):
         d1, d2, d3, d4 = st.columns(4)
-        d1.metric("Max NO₂",  f"{df['predicted_no2'].max():.4e}")
-        d2.metric("Min NO₂",  f"{df['predicted_no2'].min():.4e}")
-        d3.metric("Mean NO₂", f"{df['predicted_no2'].mean():.4e}")
+        # map_df['predicted_no2'] is already scaled to µg/m³ (×1e6, rounded to 2dp)
+        d1.metric("Max NO₂",  f"{map_df['predicted_no2'].max():.2f} µg/m³")
+        d2.metric("Min NO₂",  f"{map_df['predicted_no2'].min():.2f} µg/m³")
+        d3.metric("Mean NO₂", f"{map_df['predicted_no2'].mean():.2f} µg/m³")
         d4.metric("Grid pts", f"{len(df):,}")
 
         st.divider()
@@ -464,21 +472,22 @@ def main():
         st.markdown(
             """
             | Parameter        | Value              |
-            |------------------|--------------------|
-            | Algorithm        | LightGBM           |
-            | n_estimators     | 400                |
-            | learning_rate    | 0.05               |
-            | num_leaves       | 31                 |
-            | max_depth        | 8                  |
-            | Input Features   | 12                 |
-            | R²               | 0.9522             |
-            | RMSE             | 9.069e-06          |
-            | Resolution       | 1 km × 1 km       |
-            | Target Variable  | Tropospheric NO₂   |
-            | Training Data    | mumbai_train.csv   |
-            | Colour Scale     | Percentile p5–p95  |
+            |------------------|---------------------|
+            | Algorithm        | LightGBM            |
+            | n_estimators     | 400                 |
+            | learning_rate    | 0.05                |
+            | num_leaves       | 31                  |
+            | max_depth        | 8                   |
+            | Input Features   | 12                  |
+            | R²               | 0.9522              |
+            | RMSE             | 9.07 µg/m³          |
+            | Resolution       | 1 km × 1 km        |
+            | Target Variable  | Tropospheric NO₂    |
+            | Training Data    | mumbai_train.csv    |
+            | Colour Scale     | Percentile p5–p95   |
             """
         )
+
 
     # ── FOOTER ────────────────────────────────────────────────────────────────
     st.divider()
