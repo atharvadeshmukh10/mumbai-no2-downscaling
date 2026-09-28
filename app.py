@@ -19,6 +19,72 @@ st.set_page_config(
     page_icon="🛰️",
 )
 
+# ── CUSTOM UI THEME (INLINE CSS) ──────────────────────────────────────────────
+
+st.markdown(
+    """
+    <style>
+    /* 1. Hide the default Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    [data-testid="stHeader"] {background-color: transparent;}
+
+    /* 2. Pure White Background */
+    [data-testid="stAppViewContainer"] {
+        background: #ffffff !important;
+    }
+
+    /* Force all base text to dark slate */
+    .stMarkdown, p, h1, h2, h3, h4, label {
+        color: #0f172a !important;
+    }
+
+    /* 3. Light Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #f8fafc !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+
+    /* 4. Metric Cards & Expanders: White with soft borders */
+    [data-testid="stMetric"], [data-testid="stExpander"] {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Fix Expander text and backgrounds */
+    [data-testid="stExpander"] summary, [data-testid="stExpander"] details {
+        background-color: transparent !important;
+        color: #0f172a !important;
+    }
+    [data-testid="stExpander"] summary:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    /* 5. Custom Title: Ocean Blue Gradient */
+    .custom-title {
+        font-family: 'Inter', sans-serif;
+        font-weight: 800;
+        font-size: 2.5rem;
+        background: -webkit-linear-gradient(45deg, #0284c7, #2563eb);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0px;
+    }
+
+    /* 6. Metric Values: Bold Tech Blue */
+    [data-testid="stMetricValue"] {
+        color: #2563eb !important;
+        font-size: 2rem;
+        font-weight: 800;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
 MODEL_PATH   = "models/lgbm_no2_model.pkl"
@@ -56,7 +122,6 @@ def no2_to_rgb(norm_value: float, alpha: int = 150) -> list[int]:
 
 # ── CACHED LOADERS ────────────────────────────────────────────────────────────
 
-
 @st.cache_resource(show_spinner="🔧 Loading model…")
 def load_model():
     return joblib.load(MODEL_PATH)
@@ -86,15 +151,10 @@ def parse_geo(geo_val):
         return None, None
 
 
-# ── COLOUR COLUMN BUILDER ─────────────────────────────────────────────────────
+# ── COLOUR COLUMN BUILDER (legacy, kept for reference) ───────────────────────
 
 @st.cache_data(show_spinner="🎨 Computing colour scale…")
 def build_grid_dataframe(_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Normalise predicted_no2 to 0–1, then map through matplotlib turbo colormap
-    to produce an 'rgb_color' column: [R, G, B, 150] per row.
-    Cached so colour computation doesn't repeat on sidebar toggles.
-    """
     _df = _df.copy()
     min_val = _df["predicted_no2"].min()
     max_val = _df["predicted_no2"].max()
@@ -114,7 +174,15 @@ def main():
         "using a LightGBM model trained on ERA5 meteorology, SRTM elevation, "
         "and Sentinel-5P observations."
     )
-    st.divider()
+    st.info(
+        "🟢 **System Online:** Real-time spatial downscaling active. "
+        "Rendering **96,905 pixels** at 1 km × 1 km resolution."
+    )
+
+    # ── KPI ROW PLACEHOLDER ───────────────────────────────────────────────────
+    # Rendered here (top of page) but FILLED after all data is computed below,
+    # so live_station_rows and map_df.max() are available for Col 3 & Col 4.
+    kpi_placeholder = st.empty()
 
     # ── SIDEBAR ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -122,21 +190,14 @@ def main():
         use_live_data = st.checkbox("Fetch Live OpenAQ Validation Data")
 
         st.divider()
-        st.subheader("📊 Model Metrics")
-        st.metric("R² Score",          "0.9522")
-        st.metric("RMSE",              "9.069e-06")
-        st.metric("Grid Resolution",   "1 km × 1 km")
-        st.metric("Total Grid Pixels", "96,905")
-
-        st.divider()
-        st.subheader("🗺️ Legend")
-        st.markdown(
-            """
-            - 🌈 **Blue → Red** — Predicted NO₂ (Turbo scale)
-            - 🔴 **Red circles** — Ground-truth stations (test set)
-            - ⚪ **White circles** — Live OpenAQ stations
-            """
-        )
+        with st.expander("🗺️ Map Legend", expanded=True):
+            st.markdown(
+                """
+                - 🌈 **Blue → Red** — Predicted NO₂ (rainbow scale)
+                - 🔴 **Red circles** — Ground-truth stations (test set)
+                - ⚪ **White circles** — Live OpenAQ stations
+                """
+            )
         st.caption("Built for Internal Hackathon · Mumbai Air Quality")
 
     # ── LOAD MODEL & DATA ─────────────────────────────────────────────────────
@@ -369,37 +430,53 @@ def main():
         layers=layers,
         initial_view_state=view_state,
         map_provider="carto",   # no API key required
-        map_style="road",       # road basemap visible through alpha=120 cells
+        map_style="road",       # road basemap visible through alpha=130 cells
         tooltip=tooltip,
     )
 
-    # ── RENDER ────────────────────────────────────────────────────────────────
-    st.subheader("🗺️ NO₂ Prediction Grid — Mumbai Metropolitan Region")
+    # ── FILL KPI ROW (now that all data is computed) ───────────────────────────
+    # Uses kpi_placeholder defined at the top so it renders above the map in UI.
+    peak_no2   = map_df["predicted_no2"].max()
+    sensor_val = str(len(live_station_rows)) if live_station_rows else "Offline"
 
-    col_map, col_stats = st.columns([3, 1])
+    with kpi_placeholder.container():
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("LightGBM R²",       "0.9522")
+        col2.metric("Spatial Resolution", "1 km²")
+        col3.metric("Peak Predicted NO₂", f"{peak_no2:.1e}")
+        col4.metric("Active Sensors",     sensor_val)
 
-    with col_map:
-        st.pydeck_chart(deck, use_container_width=True)
+    st.divider()
 
-    with col_stats:
-        st.markdown("### 📈 Grid Summary")
-        st.metric("Max NO₂",  f"{df['predicted_no2'].max():.4e}")
-        st.metric("Min NO₂",  f"{df['predicted_no2'].min():.4e}")
-        st.metric("Mean NO₂", f"{df['predicted_no2'].mean():.4e}")
-        st.metric("Grid pts", f"{len(df):,}")
+    # ── MAP (full-width, commands the screen) ─────────────────────────────────
+    st.pydeck_chart(deck, use_container_width=True)
+
+    # ── COLLAPSIBLE DIAGNOSTICS ───────────────────────────────────────────────
+    with st.expander("🔬 View Model Architecture & Diagnostics", expanded=False):
+        d1, d2, d3, d4 = st.columns(4)
+        d1.metric("Max NO₂",  f"{df['predicted_no2'].max():.4e}")
+        d2.metric("Min NO₂",  f"{df['predicted_no2'].min():.4e}")
+        d3.metric("Mean NO₂", f"{df['predicted_no2'].mean():.4e}")
+        d4.metric("Grid pts", f"{len(df):,}")
 
         st.divider()
-        st.markdown("### 🏆 Model Details")
+        st.markdown("### 🏆 Model Architecture")
         st.markdown(
             """
-            | Parameter   | Value            |
-            |-------------|------------------|
-            | Algorithm   | LightGBM         |
-            | Features    | 12               |
-            | R²          | 0.9522           |
-            | RMSE        | 9.069e-06        |
-            | Resolution  | 1 km × 1 km     |
-            | Target      | Tropospheric NO₂ |
+            | Parameter        | Value              |
+            |------------------|--------------------|
+            | Algorithm        | LightGBM           |
+            | n_estimators     | 400                |
+            | learning_rate    | 0.05               |
+            | num_leaves       | 31                 |
+            | max_depth        | 8                  |
+            | Input Features   | 12                 |
+            | R²               | 0.9522             |
+            | RMSE             | 9.069e-06          |
+            | Resolution       | 1 km × 1 km       |
+            | Target Variable  | Tropospheric NO₂   |
+            | Training Data    | mumbai_train.csv   |
+            | Colour Scale     | Percentile p5–p95  |
             """
         )
 
